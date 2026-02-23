@@ -1,5 +1,6 @@
 import pygame
 from pygame.locals import *
+import random
 
 pygame.init()
 
@@ -20,6 +21,9 @@ ground_scroll = 0
 scroll_speed = 4
 flying = False # Creating a variable to check if the bird is flying
 game_over = False # Creating a variable to check if the game is over
+pipe_gap = 200 
+pipe_frequency = 1500 # milliseconds between pipe spawns
+last_pipe = pygame.time.get_ticks() - pipe_frequency
 
 # Load the background image
 background = pygame.image.load("img/bg.png")
@@ -61,7 +65,7 @@ class Bird(pygame.sprite.Sprite):
         if game_over == False:
             if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False: # this is used to check if the mouse is clicked
                 self.clicked = True
-                self.vel_y = -15
+                self.vel_y = -11
             if pygame.mouse.get_pressed()[0] == 0: # this is used to check if the mouse is not clicked
                 self.clicked = False
 
@@ -77,17 +81,40 @@ class Bird(pygame.sprite.Sprite):
             self.image = self.images[self.index] 
 
             # Rotate the bird
-            self.image = pygame.transform.rotate(self.images[self.index], self.vel_y * -0.5 ) 
-
+            self.image = pygame.transform.rotate(self.images[self.index], self.vel_y * -0.6 ) 
          
+# Pipe class
+class Pipe(pygame.sprite.Sprite):
+    def __init__(self, x, y, position):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = pygame.image.load("img/pipe.png")
+        self.rect = self.image.get_rect() # getting the rectangle of the image
+        # position 1 is bottom pipe, position -1 is top pipe
+        if position == 1:
+            self.image = pygame.transform.flip(self.image, False, True)
+            self.rect.bottomleft = [x, y - int(pipe_gap / 2)] # setting the center of the image 
+        if position == -1:
+            self.rect.topleft = [x, y + int(pipe_gap / 2)] # setting the center of the image
+ 
+    def update(self):
+        self.rect.x -= scroll_speed
+        if self.rect.right < 0:
+            self.kill()
 
-         
-
-# creating a group of birds
+# creating the bird
 bird_group = pygame.sprite.Group()
 flappy = Bird(100, int(screen_height / 2))
 bird_group.add(flappy)
- 
+
+# Pipe group
+pipe_group = pygame.sprite.Group()
+# Creating the pipe manually
+#btm_pipe = Pipe(300, int(screen_height / 2), -1)
+#tp_pipe = Pipe(300, int(screen_height / 2), 1)
+#pipe_group.add(btm_pipe)
+#pipe_group.add(tp_pipe)
+
+
 # Creating the game loop 
 run = True # initial condition is set to true
 # Creating the while loop
@@ -100,23 +127,39 @@ while run:
     # Draw background first, then ground, then bird (back-to-front order)
     screen.blit(background, (0, 0))
 
-  # drawing the bird
+  # drawing the bird and the pipe
     bird_group.draw(screen)
-    bird_group.update() 
+    bird_group.update()
+    pipe_group.draw(screen)
 
     screen.blit(ground, (ground_scroll, 768)) # scrolling the ground image
 
+    # Logic for the bird hitting the pipe
+    if pygame.sprite.groupcollide(bird_group, pipe_group, False, False) or flappy.rect.top < 0 :
+        game_over = True 
+
     # check if the bird has hit the ground
-    if flappy.rect.bottom > 790:
+    if flappy.rect.bottom >= 790:
         game_over = True
         flying = False
- 
 
-    # scrolling the ground image
-    if game_over == False:
+    
+    if game_over == False and flying == True:
+        # Pipe spawning logic
+        time_now = pygame.time.get_ticks()
+        if time_now - last_pipe > pipe_frequency:
+            pipe_height = random.randint(-100, 100)
+            btm_pipe = Pipe(screen_width, int(screen_height / 2) + pipe_height, -1)
+            tp_pipe = Pipe(screen_width, int(screen_height / 2) + pipe_height, 1)
+            pipe_group.add(btm_pipe) 
+            pipe_group.add(tp_pipe) 
+            last_pipe = time_now
+
+        # scrolling the ground image
         ground_scroll -= scroll_speed
         if abs(ground_scroll) > 35: # this is used to reset the ground scroll when it reaches a certain point
             ground_scroll = 0
+        pipe_group.update() 
     
     # this is an event handler, without this the game will not quit.
     for event in pygame.event.get():
