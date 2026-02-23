@@ -4,8 +4,7 @@ Flappy Bird-style game with the 005s
 
 ## Controls
 
-Space: Flap / jump
-Esc: Quit
+Space-bar/Left-click: Flap / jump
 
 ## Notes
 
